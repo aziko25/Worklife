@@ -2,7 +2,6 @@ package telegram.bot.Controller.Admins;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +12,6 @@ import telegram.bot.Service.WorkingTimes.WorkingTimesService;
 
 import java.time.LocalDate;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static telegram.bot.Controller.Admins.Login.*;
@@ -22,7 +20,7 @@ import static telegram.bot.Controller.Admins.Login.*;
 @CrossOrigin(maxAge = 3600)
 @RequestMapping("/api/admins/Working-Time")
 @RequiredArgsConstructor
-public class WorkingTime {
+public class WorkingTimeController {
 
     private final AdminService adminService;
     private final WorkingTimeService workingTimeService;
@@ -182,9 +180,16 @@ public class WorkingTime {
 
     @Authorization(requiredRoles = {"ROLE_ADMIN"})
     @GetMapping("/attendanceByDateRange")
-    public ResponseEntity<?> allLateAtTimeGraph(@RequestParam @DateTimeFormat(pattern="yyyy-MM-dd") LocalDate start,
-                                                @RequestParam @DateTimeFormat(pattern="yyyy-MM-dd") LocalDate end) {
+    public ResponseEntity<?> allLateAtTimeGraph(@RequestParam(required = false) @DateTimeFormat(pattern="yyyy-MM-dd") LocalDate start,
+                                                @RequestParam(required = false) @DateTimeFormat(pattern="yyyy-MM-dd") LocalDate end) {
 
         return ResponseEntity.ok(workingTimesService.lateAndAtTimeGraphForDateRanges(start, end));
+    }
+
+    @Authorization(requiredRoles = {"ROLE_ADMIN"})
+    @GetMapping("/leaderboard")
+    public ResponseEntity<?> leaderboard() {
+
+        return ResponseEntity.ok(workingTimesService.createLeaderboard());
     }
 }

@@ -1,8 +1,7 @@
 package telegram.bot.Controller.Admins;
 
 
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
@@ -11,26 +10,46 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import telegram.bot.Configuration.JWTAuthorization.Authorization;
 import telegram.bot.Service.AdminService;
+import telegram.bot.Service.Employees.EmployeesService;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static telegram.bot.Controller.Admins.Login.*;
+import static telegram.bot.Controller.Admins.Login.SCHEME_NAME;
+import static telegram.bot.Controller.Admins.Login.USERNAME;
 
 @RestController
 @CrossOrigin(maxAge = 3600)
 @RequestMapping("/api/admins/Employees")
+@RequiredArgsConstructor
 public class EmployeesController {
 
     private final AdminService adminService;
     private final JdbcTemplate jdbcTemplate;
+    private final EmployeesService employeesService;
 
-    @Autowired
-    public EmployeesController(AdminService adminService, JdbcTemplate jdbcTemplate) {
+    @Authorization(requiredRoles = {"ROLE_ADMIN"})
+    @GetMapping("/birthdaysIn5Days")
+    public ResponseEntity<?> birthdaysIn5Days() {
 
-        this.adminService = adminService;
-        this.jdbcTemplate = jdbcTemplate;
+        return ResponseEntity.ok(employeesService.allEmployeesBirthdaysIn5Days());
+    }
+
+    @Authorization(requiredRoles = {"ROLE_ADMIN"})
+    @GetMapping("/birthdaysByTimeRange")
+    public ResponseEntity<?> birthdaysByTimeRange(@RequestParam LocalDate start,
+                                                  @RequestParam LocalDate end) {
+
+        return ResponseEntity.ok(employeesService.allEmployeesBirthdaysByDateRange(start, end));
+    }
+
+    @Authorization(requiredRoles = {"ROLE_ADMIN"})
+    @PutMapping("/updateBirthday/{id}")
+    public ResponseEntity<?> updateEmployeesBirthday(@PathVariable int id, @RequestParam LocalDate birthdate) {
+
+        return ResponseEntity.ok(employeesService.setEmployeesBirthday(id, birthdate));
     }
 
     @Authorization(requiredRoles = {"ROLE_ADMIN"})

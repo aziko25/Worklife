@@ -1,6 +1,8 @@
 package telegram.bot.Controller.Admins;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -13,13 +15,15 @@ import telegram.bot.Configuration.JWTAuthorization.Authorization;
 import telegram.bot.Service.Users.ArrivalExitTimes;
 import telegram.bot.Service.Workly.WorklyService;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 import static telegram.bot.Controller.Admins.Login.*;
@@ -189,5 +193,72 @@ public class WorklyController {
 
             throw new IllegalArgumentException("User Not Found!");
         }
+    }
+
+
+    @Authorization(requiredRoles = {"ROLE_WORKLY"})
+    @PostMapping("/uploadBulkRecords")
+    public ResponseEntity<?> uploadBulkRecords(@RequestBody List<BulkRecord> records) {
+
+        List<String> results = new ArrayList<>();
+
+        for (BulkRecord record : records) {
+            try {
+                String username = fetchUsername(record.getCode());
+
+                // Assuming images are Base64 encoded strings in BulkRecord
+                String imagePath = saveImage(record.getImage(), username, record.getArrivalTime(), record.getExitTime());
+
+                if (record.getArrivalTime() != null) {
+                    arrivalExitTimes.setArrivalTime(SCHEME_NAME, username, imagePath, 0.0, 0.0);
+                }
+                if (record.getExitTime() != null) {
+                    arrivalExitTimes.setExitTime(SCHEME_NAME, imagePath, username, 0.0, 0.0);
+                }
+
+                results.add("Record for user " + username + " processed successfully.");
+            }
+            catch (Exception e) {
+                results.add("Error processing record for code " + record.getCode() + ": " + e.getMessage());
+            }
+        }
+
+        return ResponseEntity.ok(results);
+    }
+
+    private String fetchUsername(int code) {
+        String sqlToFetchUsername = "SELECT username from " + SCHEME_NAME + ".employees Where workly_code = ?;";
+        return jdbcTemplate.queryForObject(sqlToFetchUsername, String.class, code);
+    }
+
+    private String saveImage(String base64Image, String username, LocalDateTime time, LocalDateTime exitTime) throws IOException {
+        // Decode Base64 to image
+        byte[] imageBytes = Base64.getDecoder().decode(base64Image);
+        InputStream in = new ByteArrayInputStream(imageBytes);
+
+        ZoneId zoneId = ZoneId.of("Asia/Tashkent");
+        ZonedDateTime zonedDateTime = ZonedDateTime.now(zoneId);
+        LocalDate currentDate = zonedDateTime.toLocalDate();
+
+        String timestampPart = (time != null) ? "_arrival" : (exitTime != null) ? "_exit" : "";
+        String filename = username + "_" + currentDate + timestampPart + ".png"; // Assuming PNG format
+
+        String imagePath = "/var/www/html/images/" + filename;
+
+        File file = new File(imagePath);
+        try (OutputStream out = new FileOutputStream(file)) {
+            out.write(imageBytes);
+        }
+
+        return imagePath;
+    }
+
+    @Getter
+    @Setter
+    public static class BulkRecord {
+        private int code;
+        private String image; // Base64 encoded
+        private LocalDateTime arrivalTime;
+        private LocalDateTime exitTime;
     }
 }

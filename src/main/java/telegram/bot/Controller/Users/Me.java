@@ -47,6 +47,7 @@ public class Me {
         Map<String, Object> result2 = jdbcTemplate.queryForMap(sql1, USERNAME);
 
         Map<String, Object> combinedResult = new LinkedHashMap<>();
+
         combinedResult.putAll(result1);
         combinedResult.putAll(result2);
 
