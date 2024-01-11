@@ -67,28 +67,24 @@ public class WorkingTimesService {
 
         List<Map<String, Object>> employees = jdbcTemplate.queryForList("SELECT id, username FROM " + SCHEME_NAME + ".employees WHERE role IN ('ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ROLE_USER');");
 
-        for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
-            if (!tempOutput.containsKey(date)) {
-                Map<String, List<Map<String, Object>>> data = new LinkedHashMap<>();
-                data.put("came", new ArrayList<>());
-                data.put("late", new ArrayList<>());
-                data.put("onTime", new ArrayList<>());
-                data.put("absent", new ArrayList<>(employees));
-                tempOutput.put(date, data);
-            } else {
-                Map<String, List<Map<String, Object>>> data = tempOutput.get(date);
-                List<Map<String, Object>> came = data.getOrDefault("came", new ArrayList<>());
-                List<Map<String, Object>> absent = new ArrayList<>(employees);
-                absent.removeAll(came);
-                data.put("absent", absent);
-            }
-        }
-
         List<Map<String, Object>> outputList = new ArrayList<>();
-        for (Map.Entry<LocalDate, Map<String, List<Map<String, Object>>>> entry : tempOutput.entrySet()) {
+
+        for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
             Map<String, Object> dateEntry = new LinkedHashMap<>();
-            dateEntry.put("date", entry.getKey().toString());
-            dateEntry.put("data", entry.getValue());
+            dateEntry.put("date", date.toString());
+
+            Map<String, List<Map<String, Object>>> data = tempOutput.getOrDefault(date, new LinkedHashMap<>());
+
+            data.putIfAbsent("came", new ArrayList<>());
+            data.putIfAbsent("late", new ArrayList<>());
+            data.putIfAbsent("onTime", new ArrayList<>());
+
+            List<Map<String, Object>> came = data.get("came");
+            List<Map<String, Object>> absent = new ArrayList<>(employees);
+            absent.removeAll(came);
+            data.put("absent", absent);
+
+            dateEntry.putAll(data);
             outputList.add(dateEntry);
         }
 
