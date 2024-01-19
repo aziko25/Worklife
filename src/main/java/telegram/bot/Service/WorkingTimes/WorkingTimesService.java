@@ -19,77 +19,82 @@ public class WorkingTimesService {
     private final JdbcTemplate jdbcTemplate;
 
     public List<Map<String, Object>> lateAndAtTimeGraphForDateRanges(LocalDate start, LocalDate end) {
-
-        // If start and end dates are not provided, set them to today's date
         if (start == null || end == null) {
             start = LocalDate.now();
             end = LocalDate.now();
         }
 
-        String fetchData = "SELECT wt.date, e.id, e.username, wt.arrived_time, wt.exited_time, wt.late FROM " + SCHEME_NAME + ".working_time wt INNER JOIN " + SCHEME_NAME + ".employees e ON wt.employee_name = e.username WHERE wt.date BETWEEN ? AND ?;";
-        List<Map<String, Object>> results = jdbcTemplate.queryForList(fetchData, start, end);
-
-        SortedMap<LocalDate, Map<String, List<Map<String, Object>>>> tempOutput = new TreeMap<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-        for (Map<String, Object> result : results) {
-            LocalDate date = ((Timestamp) result.get("date")).toLocalDateTime().toLocalDate();
-            Integer id = (Integer) result.get("id");
-            String username = (String) result.get("username");
-            Integer late = (Integer) result.get("late");
-
-            Map<String, Object> employeeData = new LinkedHashMap<>();
-            employeeData.put("id", id);
-            employeeData.put("username", username);
-
-            Timestamp arrival_time = (Timestamp) result.get("arrived_time");
-            if (arrival_time != null) {
-                employeeData.put("arrival_time", arrival_time.toLocalDateTime().format(formatter));
-            }
-
-            Timestamp exit_time = (Timestamp) result.get("exited_time");
-            if (exit_time != null) {
-                employeeData.put("exit_time", exit_time.toLocalDateTime().format(formatter));
-            }
-
-            if (!tempOutput.containsKey(date)) {
-                tempOutput.put(date, new LinkedHashMap<>());
-            }
-
-            Map<String, List<Map<String, Object>>> dateData = tempOutput.get(date);
-            if (late > 0) {
-                employeeData.put("late", late);
-                dateData.computeIfAbsent("late", k -> new ArrayList<>()).add(employeeData);
-            } else {
-                dateData.computeIfAbsent("onTime", k -> new ArrayList<>()).add(employeeData);
-            }
+        // Query to fetch all employees
+        List<Map<String, Object>> allEmployees = jdbcTemplate.queryForList("SELECT id, username FROM " + SCHEME_NAME + ".employees WHERE role != 'ROLE_WORKLY';");
+        Map<String, Map<String, Object>> employeeMap = new HashMap<>();
+        for (Map<String, Object> employee : allEmployees) {
+            employeeMap.put((String) employee.get("username"), new HashMap<>(employee));
         }
 
-        List<Map<String, Object>> employees = jdbcTemplate.queryForList("SELECT id, username FROM " + SCHEME_NAME + ".employees WHERE role IN ('ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ROLE_USER');");
+        String fetchData = "SELECT wt.date, e.id, e.username, wt.arrived_time, wt.exited_time, wt.late FROM " +
+                SCHEME_NAME + ".working_time wt INNER JOIN " + SCHEME_NAME + ".employees e ON wt.employee_name = e.username WHERE wt.date BETWEEN ? AND ?;";
 
         List<Map<String, Object>> outputList = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+            // Query to fetch attendance records for the date
+            List<Map<String, Object>> dailyAttendance = jdbcTemplate.queryForList(fetchData, date, date);
+
+            Map<String, List<Map<String, Object>>> dateData = new LinkedHashMap<>();
+            dateData.put("came", new ArrayList<>());
+            dateData.put("late", new ArrayList<>());
+            dateData.put("onTime", new ArrayList<>());
+
+            for (Map<String, Object> attendance : dailyAttendance) {
+                String username = (String) attendance.get("username");
+                Integer late = (Integer) attendance.get("late");
+
+                // Populate employeeData from attendance
+                Map<String, Object> employeeData = new LinkedHashMap<>(employeeMap.get(username));
+                Timestamp arrival_time = (Timestamp) attendance.get("arrived_time");
+                if (arrival_time != null) {
+                    employeeData.put("arrival_time", arrival_time.toLocalDateTime().format(formatter));
+                }
+                Timestamp exit_time = (Timestamp) attendance.get("exited_time");
+                if (exit_time != null) {
+                    employeeData.put("exit_time", exit_time.toLocalDateTime().format(formatter));
+                }
+
+                // Add to 'came', 'late' or 'onTime'
+                dateData.get("came").add(employeeData);
+                if (late > 0) {
+                    dateData.get("late").add(employeeData);
+                } else {
+                    dateData.get("onTime").add(employeeData);
+                }
+
+                // Mark as came in the employee map
+                employeeMap.get(username).put("came", true);
+            }
+
+            // Check for absent employees
+            List<Map<String, Object>> absentList = new ArrayList<>();
+            for (String empUsername : employeeMap.keySet()) {
+                if (!employeeMap.get(empUsername).containsKey("came")) {
+                    absentList.add(employeeMap.get(empUsername));
+                } else {
+                    // Reset for the next day
+                    employeeMap.get(empUsername).remove("came");
+                }
+            }
+            dateData.put("absent", absentList);
+
+            // Prepare the final output for the day
             Map<String, Object> dateEntry = new LinkedHashMap<>();
             dateEntry.put("date", date.toString());
-
-            Map<String, List<Map<String, Object>>> data = tempOutput.getOrDefault(date, new LinkedHashMap<>());
-
-            data.putIfAbsent("came", new ArrayList<>());
-            data.putIfAbsent("late", new ArrayList<>());
-            data.putIfAbsent("onTime", new ArrayList<>());
-
-            List<Map<String, Object>> came = data.get("came");
-            List<Map<String, Object>> absent = new ArrayList<>(employees);
-            absent.removeAll(came);
-            data.put("absent", absent);
-
-            dateEntry.putAll(data);
+            dateEntry.putAll(dateData);
             outputList.add(dateEntry);
         }
 
         return outputList;
     }
+
 
 
     public List<Map<String, Object>> createLeaderboard() {
