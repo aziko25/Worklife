@@ -1,7 +1,10 @@
 package telegram.bot.Controller.Admins;
 
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
@@ -13,6 +16,8 @@ import telegram.bot.Service.AdminService;
 import telegram.bot.Service.Employees.EmployeesService;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -58,13 +63,15 @@ public class EmployeesController {
                                             @RequestParam String password,
                                             @RequestParam String role,
                                             @RequestParam int worklyCode,
-                                            @RequestParam int worklyPass) {
+                                            @RequestParam int worklyPass,
+                                            @RequestParam LocalTime arrivalTime,
+                                            @RequestParam LocalTime exitTime) {
 
         try {
 
             if (username.contains(SCHEME_NAME + "_")) {
 
-                adminService.createEmployee(SCHEME_NAME, username, password, role, worklyCode, worklyPass);
+                adminService.createEmployee(SCHEME_NAME, username, password, role, worklyCode, worklyPass, arrivalTime, exitTime);
 
                 return ResponseEntity.ok("Employee " + username + " Created");
             }
@@ -227,5 +234,41 @@ public class EmployeesController {
 
             return new ResponseEntity<>("Successfully Returned " + username + " Employee", HttpStatus.OK);
         }
+    }
+
+    @Authorization(requiredRoles = {"ROLE_ADMIN"})
+    @PutMapping("/updateWorkingTimes")
+    public ResponseEntity<?> updateEmployeesWorkingTimes(@RequestParam List<Integer> ids, @RequestParam LocalTime start, @RequestParam LocalTime end) {
+
+        return ResponseEntity.ok(employeesService.setEmployeesWorkingTimesGraphic(ids, start, end));
+    }
+
+    @Authorization(requiredRoles = {"ROLE_ADMIN"})
+    @GetMapping("/allTimeOffs/{id}")
+    public ResponseEntity<?> allEmployeesTimeOffs(@PathVariable Integer id) {
+
+        return ResponseEntity.ok(employeesService.employeesTimeOffs(id));
+    }
+
+    @Getter
+    @Setter
+    public static class Dates {
+
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+        private List<LocalDateTime> date;
+    }
+
+    @Authorization(requiredRoles = {"ROLE_ADMIN"})
+    @DeleteMapping("/deleteTimeOffs/{id}")
+    public ResponseEntity<?> deleteEmployeesTimeOffs(@PathVariable Integer id, @RequestBody Dates dates) {
+
+        return ResponseEntity.ok(employeesService.deleteEmployeesTimeOffs(id, dates.getDate()));
+    }
+
+    @Authorization(requiredRoles = {"ROLE_ADMIN"})
+    @PostMapping("/giveTimeOff")
+    public ResponseEntity<?> giveEmployeesTimeOff(@RequestBody EmployeesService.TimeOff timeOff) {
+
+        return ResponseEntity.ok(employeesService.giveEmployeeTimeOff(timeOff));
     }
 }

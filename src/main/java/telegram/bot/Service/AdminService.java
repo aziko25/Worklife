@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.Types;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
 
 import static telegram.bot.Controller.Admins.Login.SCHEME_NAME;
@@ -31,7 +32,7 @@ import static telegram.bot.Service.Users.TasksService.formatDates;
 public class AdminService {
 
     private final JdbcTemplate jdbcTemplate;
-    private final TelegramLongPollingBot telegramLongPollingBot;
+    //private final TelegramLongPollingBot telegramLongPollingBot;
 
 
     // EMPLOYEES
@@ -50,7 +51,8 @@ public class AdminService {
         return selectAll(sql);
     }
 
-    public void createEmployee(String schema_name, String username, String password, String role, int worklyCode, int worklyPass) {
+    public void createEmployee(String schema_name, String username, String password, String role, int worklyCode, int worklyPass,
+                               LocalTime arrivalTime, LocalTime exitTime) {
 
         String checkSql = "SELECT COUNT(*) FROM " + schema_name + ".employees WHERE username = ? AND workly_code = ?;";
 
@@ -62,9 +64,9 @@ public class AdminService {
         }
         else {
 
-            String insertSql = "INSERT INTO " + schema_name + ".employees (username, password, role, workly_code, workly_password) VALUES (?, ?, ?, ?, ?)";
+            String insertSql = "INSERT INTO " + schema_name + ".employees (username, password, role, workly_code, workly_password, arrival_time, exit_time) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-            jdbcTemplate.update(insertSql, username, password, role, worklyCode, worklyPass);
+            jdbcTemplate.update(insertSql, username, password, role, worklyCode, worklyPass, arrivalTime, exitTime);
         }
     }
 
@@ -273,7 +275,7 @@ public class AdminService {
 
         sql = "SELECT chat_id FROM " + schema_name + ".employees WHERE username = ?";
 
-        Long chat_id = jdbcTemplate.queryForObject(sql, new Object[]{responsible_name}, Long.class);
+        /*Long chat_id = jdbcTemplate.queryForObject(sql, new Object[]{responsible_name}, Long.class);
 
         if (chat_id != null) {
 
@@ -292,7 +294,7 @@ public class AdminService {
 
                 e.printStackTrace();
             }
-        }
+        }*/
     }
 
     public String updateTask(int id, String description, MultipartFile audioFile) throws Exception {
@@ -489,7 +491,6 @@ public class AdminService {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, date);
         return formatDate(rows);
     }
-
 
     private List<Map<String, Object>> formatDate(List<Map<String, Object>> rows) {
 

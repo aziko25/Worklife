@@ -1,5 +1,5 @@
 package telegram.bot;
-
+/*
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -798,4 +798,4 @@ public class MainBot extends TelegramLongPollingBot {
         //return "azizkhuja_test_bot";
         return "loko_loko_bot";
     }
-}
+}*/

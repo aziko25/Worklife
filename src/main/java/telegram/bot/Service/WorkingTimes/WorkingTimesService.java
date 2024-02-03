@@ -45,6 +45,7 @@ public class WorkingTimesService {
             dateData.put("came", new ArrayList<>());
             dateData.put("late", new ArrayList<>());
             dateData.put("onTime", new ArrayList<>());
+            dateData.put("timeOff", new ArrayList<>());
 
             for (Map<String, Object> attendance : dailyAttendance) {
                 String username = (String) attendance.get("username");
@@ -94,8 +95,6 @@ public class WorkingTimesService {
 
         return outputList;
     }
-
-
 
     public List<Map<String, Object>> createLeaderboard() {
 

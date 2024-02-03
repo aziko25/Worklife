@@ -1,6 +1,7 @@
 package telegram.bot.Service.Users;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SingleColumnRowMapper;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+
+import static telegram.bot.Controller.Admins.Login.USERNAME;
 
 @Service
 public class ArrivalExitTimes {
@@ -53,29 +56,97 @@ public class ArrivalExitTimes {
 
     public void setArrivalTime(String schema_name, String username, String imagePath, Double longitude, Double latitude) {
 
-        String checkSql = "SELECT COUNT(*) FROM " + schema_name + ".working_time WHERE date = current_date AND employee_name = ? AND arrived_time IS NOT NULL";
+        String checkSql = "SELECT COUNT(*) FROM " + schema_name + ".working_time WHERE date = current_date AND employee_name = ? AND expected_arrival_time IS NOT NULL;";
         int count = jdbcTemplate.queryForObject(checkSql, Integer.class, username);
 
         if (count == 0) {
 
+            String oneMoreCheckSql = "SELECT COUNT(*) FROM " + schema_name + ".working_time WHERE date = current_date AND employee_name = ? AND arrived_time IS NULL AND expected_arrival_time IS NULL;";
+            int checkCount = jdbcTemplate.queryForObject(oneMoreCheckSql, Integer.class, username);
+
             LocalDateTime now = LocalDateTime.now();
             Timestamp currentTimestamp = Timestamp.valueOf(now);
 
-            String companyWorkingTime = "SELECT arrival_time FROM " + schema_name + ".company_working_times WHERE id = 1;";
-            LocalTime companyArrivalTime = jdbcTemplate.queryForObject(companyWorkingTime, new SingleColumnRowMapper<>(LocalTime.class));
+            if (checkCount >= 1) {
 
-            double arrivalRadius = getRadius(schema_name, longitude, latitude);
+                try {
 
-            assert companyArrivalTime != null;
-            long late = Duration.between(companyArrivalTime, now.toLocalTime()).toMinutes();
+                    String sqlUserArrivalTime = "SELECT arrival_time FROM " + schema_name + ".employees WHERE username = ?;";
+                    LocalTime userArrivalTime = jdbcTemplate.queryForObject(sqlUserArrivalTime, LocalTime.class, username);
 
-            String sql = "INSERT INTO " + schema_name + ".working_time (date, arrived_time, employee_name, img_link, late, arrival_radius) VALUES (current_date, ?, ?, ?, ?, ?)";
+                    assert userArrivalTime != null;
+                    long late = Duration.between(userArrivalTime, now.toLocalTime()).toMinutes();
 
-            jdbcTemplate.update(sql, currentTimestamp, username, imagePath, late, arrivalRadius);
+                    String sql = "UPDATE " + schema_name + ".working_time SET arrived_time = ? AND late = ? WHERE date = current_date AND employee_name = ?;";
+
+                    jdbcTemplate.update(sql, currentTimestamp, late, username);
+                }
+                catch (EmptyResultDataAccessException ignored) {
+
+                    String companyWorkingTime = "SELECT arrival_time FROM " + schema_name + ".company_working_times WHERE id = 1;";
+                    LocalTime companyArrivalTime = jdbcTemplate.queryForObject(companyWorkingTime, new SingleColumnRowMapper<>(LocalTime.class));
+
+                    assert companyArrivalTime != null;
+                    long late = Duration.between(companyArrivalTime, now.toLocalTime()).toMinutes();
+
+                    String sql = "UPDATE " + schema_name + ".working_time SET arrived_time = ? AND late = ? WHERE date = current_date AND employee_name = ?;";
+
+                    jdbcTemplate.update(sql, currentTimestamp, late, username);
+                }
+            }
+            else {
+
+                try {
+
+                    String sqlUserArrivalTime = "SELECT arrival_time FROM " + schema_name + ".employees WHERE username = ?;";
+                    LocalTime userArrivalTime = jdbcTemplate.queryForObject(sqlUserArrivalTime, LocalTime.class, username);
+
+                    double arrivalRadius = getRadius(schema_name, longitude, latitude);
+
+                    assert userArrivalTime != null;
+                    long late = Duration.between(userArrivalTime, now.toLocalTime()).toMinutes();
+
+                    String sql = "INSERT INTO " + schema_name + ".working_time (date, arrived_time, employee_name, img_link, late, arrival_radius) VALUES (current_date, ?, ?, ?, ?, ?)";
+
+                    jdbcTemplate.update(sql, currentTimestamp, username, imagePath, late, arrivalRadius);
+                }
+                catch (EmptyResultDataAccessException ignored) {
+
+                    String companyWorkingTime = "SELECT arrival_time FROM " + schema_name + ".company_working_times WHERE id = 1;";
+                    LocalTime companyArrivalTime = jdbcTemplate.queryForObject(companyWorkingTime, new SingleColumnRowMapper<>(LocalTime.class));
+
+                    double arrivalRadius = getRadius(schema_name, longitude, latitude);
+
+                    assert companyArrivalTime != null;
+                    long late = Duration.between(companyArrivalTime, now.toLocalTime()).toMinutes();
+
+                    String sql = "INSERT INTO " + schema_name + ".working_time (date, arrived_time, employee_name, img_link, late, arrival_radius) VALUES (current_date, ?, ?, ?, ?, ?)";
+
+                    jdbcTemplate.update(sql, currentTimestamp, username, imagePath, late, arrivalRadius);
+                }
+            }
         }
         else {
 
-            throw new RuntimeException("Already Arrived Today");
+            String checkNullSql = "SELECT COUNT(*) FROM " + schema_name + ".working_time WHERE date = current_date AND employee_name = ? AND arrived_time IS NULL AND expected_arrival_time IS NOT NULL ";
+            int nullCount = jdbcTemplate.queryForObject(checkNullSql, Integer.class, username);
+
+            if (nullCount > 0) {
+
+                String sqlExpectedArrivalTime = "SELECT expected_arrival_time FROM " + schema_name + ".working_time WHERE date = current_date AND employee_name = ? AND arrived_time IS NULL;";
+                LocalTime userExpectedArrivalTime = jdbcTemplate.queryForObject(sqlExpectedArrivalTime, LocalTime.class, username);
+
+                LocalDateTime now = LocalDateTime.now();
+                Timestamp currentTimestamp = Timestamp.valueOf(now);
+
+                long late = Duration.between(userExpectedArrivalTime, now.toLocalTime()).toMinutes();
+
+                String updateSql = "UPDATE " + schema_name + ".working_time SET arrived_time = ?, late = ? WHERE date = current_date AND employee_name = ?";
+                jdbcTemplate.update(updateSql, currentTimestamp, late, username);
+            }
+            else {
+                throw new RuntimeException("Already Arrived Today");
+            }
         }
     }
 
@@ -84,7 +155,7 @@ public class ArrivalExitTimes {
         LocalDateTime now = LocalDateTime.now();
         Timestamp currentTimestamp = Timestamp.valueOf(now);
 
-        String checkSql = "SELECT arrived_time, exited_time FROM " + schema_name + ".working_time WHERE date = current_date AND employee_name = ?";
+        String checkSql = "SELECT * FROM " + schema_name + ".working_time WHERE date = current_date AND employee_name = ? AND arrived_time IS NOT NULL;";
 
         List<Map<String, Object>> resultList = jdbcTemplate.queryForList(checkSql, username);
 
@@ -102,13 +173,40 @@ public class ArrivalExitTimes {
 
         double exitRadius = getRadius(schema_name, longitude, latitude);
 
-        LocalTime exitTime = jdbcTemplate.queryForObject("SELECT exit_time FROM " + schema_name + ".company_working_times WHERE id = 1;", LocalTime.class);
+        if (result.get("expected_exit_time") != null) {
 
-        assert exitTime != null;
-        long overtime = Duration.between(exitTime, now.toLocalTime()).toMinutes();
+            LocalTime userExpectedExitTime = (LocalTime) result.get("expected_exit_time");
 
-        String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND date = current_date";
+            long overtime = Duration.between(userExpectedExitTime, now.toLocalTime()).toMinutes();
 
-        jdbcTemplate.update(sql, currentTimestamp, imagePath, overtime, exitRadius, username);
+            String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND date = current_date";
+
+            jdbcTemplate.update(sql, currentTimestamp, imagePath, overtime, exitRadius, username);
+        }
+        else {
+
+            try {
+
+                LocalTime userExitTime = jdbcTemplate.queryForObject("SELECT exit_time FROM " + schema_name + ".employee WHERE username = ?;", LocalTime.class, username);
+
+                assert userExitTime != null;
+                long overtime = Duration.between(userExitTime, now.toLocalTime()).toMinutes();
+
+                String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND date = current_date";
+
+                jdbcTemplate.update(sql, currentTimestamp, imagePath, overtime, exitRadius, username);
+            }
+            catch (EmptyResultDataAccessException ignored) {
+
+                LocalTime exitTime = jdbcTemplate.queryForObject("SELECT exit_time FROM " + schema_name + ".company_working_times WHERE id = 1;", LocalTime.class);
+
+                assert exitTime != null;
+                long overtime = Duration.between(exitTime, now.toLocalTime()).toMinutes();
+
+                String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND date = current_date";
+
+                jdbcTemplate.update(sql, currentTimestamp, imagePath, overtime, exitRadius, username);
+            }
+        }
     }
 }

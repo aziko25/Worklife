@@ -45,7 +45,9 @@ public class CompaniesService {
                     "firstname varchar," +
                     "mail varchar unique," +
                     "birthdate date, " +
-                    "image_link varchar);" +
+                    "image_link varchar," +
+                    "arrival_time TIME, " +
+                    "exit_time TIME);" +
 
                     "CREATE TABLE " + schema_name + ".audio (" +
                     "id SERIAL PRIMARY KEY," +

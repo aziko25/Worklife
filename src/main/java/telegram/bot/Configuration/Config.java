@@ -1,5 +1,5 @@
 package telegram.bot.Configuration;
-
+/*
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -19,4 +19,4 @@ public class Config {
 
         return api;
     }
-}
+}*/

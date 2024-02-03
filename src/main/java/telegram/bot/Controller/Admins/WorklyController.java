@@ -206,7 +206,6 @@ public class WorklyController {
             try {
                 String username = fetchUsername(record.getCode());
 
-                // Assuming images are Base64 encoded strings in BulkRecord
                 String imagePath = saveImage(record.getImage(), username, record.getArrivalTime(), record.getExitTime());
 
                 if (record.getArrivalTime() != null) {
@@ -257,7 +256,7 @@ public class WorklyController {
     @Setter
     public static class BulkRecord {
         private int code;
-        private String image; // Base64 encoded
+        private String image;
         private LocalDateTime arrivalTime;
         private LocalDateTime exitTime;
     }

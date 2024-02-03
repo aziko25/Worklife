@@ -34,9 +34,6 @@ public class UserService {
 
         return getTasksDate(username, sql, now);
     }
-
-
-
     private List<Tasks> getTasks(String username, String sql) {
 
         List<Tasks> tasks = new ArrayList<>();
