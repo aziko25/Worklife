@@ -24,21 +24,19 @@ public class WorkingTimesService {
             end = LocalDate.now();
         }
 
-        // Query to fetch all employees
         List<Map<String, Object>> allEmployees = jdbcTemplate.queryForList("SELECT id, username FROM " + SCHEME_NAME + ".employees WHERE role != 'ROLE_WORKLY';");
         Map<String, Map<String, Object>> employeeMap = new HashMap<>();
         for (Map<String, Object> employee : allEmployees) {
             employeeMap.put((String) employee.get("username"), new HashMap<>(employee));
         }
 
-        String fetchData = "SELECT wt.date, e.id, e.username, wt.arrived_time, wt.exited_time, wt.late FROM " +
+        String fetchData = "SELECT wt.date, e.id, e.username, wt.arrived_time, wt.exited_time, wt.late, wt.time_off FROM " +
                 SCHEME_NAME + ".working_time wt INNER JOIN " + SCHEME_NAME + ".employees e ON wt.employee_name = e.username WHERE wt.date BETWEEN ? AND ?;";
 
         List<Map<String, Object>> outputList = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
-            // Query to fetch attendance records for the date
             List<Map<String, Object>> dailyAttendance = jdbcTemplate.queryForList(fetchData, date, date);
 
             Map<String, List<Map<String, Object>>> dateData = new LinkedHashMap<>();
@@ -46,12 +44,13 @@ public class WorkingTimesService {
             dateData.put("late", new ArrayList<>());
             dateData.put("onTime", new ArrayList<>());
             dateData.put("timeOff", new ArrayList<>());
+            dateData.put("absent", new ArrayList<>());
 
             for (Map<String, Object> attendance : dailyAttendance) {
                 String username = (String) attendance.get("username");
                 Integer late = (Integer) attendance.get("late");
+                Boolean timeOff = (Boolean) attendance.get("time_off");
 
-                // Populate employeeData from attendance
                 Map<String, Object> employeeData = new LinkedHashMap<>(employeeMap.get(username));
                 Timestamp arrival_time = (Timestamp) attendance.get("arrived_time");
                 if (arrival_time != null) {
@@ -62,31 +61,28 @@ public class WorkingTimesService {
                     employeeData.put("exit_time", exit_time.toLocalDateTime().format(formatter));
                 }
 
-                // Add to 'came', 'late' or 'onTime'
-                dateData.get("came").add(employeeData);
-                if (late > 0) {
-                    dateData.get("late").add(employeeData);
+                if (timeOff != null && timeOff) {
+                    dateData.get("timeOff").add(employeeData);
                 } else {
-                    dateData.get("onTime").add(employeeData);
+                    dateData.get("came").add(employeeData);
+                    if (late > 0) {
+                        dateData.get("late").add(employeeData);
+                    } else {
+                        dateData.get("onTime").add(employeeData);
+                    }
                 }
 
-                // Mark as came in the employee map
                 employeeMap.get(username).put("came", true);
             }
 
-            // Check for absent employees
-            List<Map<String, Object>> absentList = new ArrayList<>();
             for (String empUsername : employeeMap.keySet()) {
                 if (!employeeMap.get(empUsername).containsKey("came")) {
-                    absentList.add(employeeMap.get(empUsername));
+                    dateData.get("absent").add(employeeMap.get(empUsername));
                 } else {
-                    // Reset for the next day
                     employeeMap.get(empUsername).remove("came");
                 }
             }
-            dateData.put("absent", absentList);
 
-            // Prepare the final output for the day
             Map<String, Object> dateEntry = new LinkedHashMap<>();
             dateEntry.put("date", date.toString());
             dateEntry.putAll(dateData);
@@ -95,6 +91,7 @@ public class WorkingTimesService {
 
         return outputList;
     }
+
 
     public List<Map<String, Object>> createLeaderboard() {
 
