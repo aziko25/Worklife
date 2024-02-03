@@ -11,8 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import telegram.bot.Models.Employees;
 
-import java.sql.Time;
-import java.sql.Timestamp;
+import javax.sql.DataSource;
+import java.sql.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -30,44 +30,49 @@ import static telegram.bot.Controller.Admins.Login.USERNAME;
 public class EmployeesService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final DataSource dataSource;
 
-    public String updateWholeEmployeesData(Integer employeeId, Employees employee) {
+    public String updateWholeEmployeesData(Integer employeeId, Employees employee) throws SQLException {
 
         String username = jdbcTemplate.queryForObject("SELECT username FROM " + SCHEME_NAME + ".employees WHERE id = ?;",
                 String.class, employeeId);
 
         if (employee.getRole() == null || (!employee.getRole().equalsIgnoreCase("ROLE_USER") &&
-                        !employee.getRole().equalsIgnoreCase("ROLE_ADMIN"))) {
+                !employee.getRole().equalsIgnoreCase("ROLE_ADMIN"))) {
 
             throw new IllegalArgumentException("Role Should Be ROLE_ADMIN or ROLE_USER!");
         }
 
         String sql = "UPDATE " + SCHEME_NAME + ".employees SET " +
-                "worklyCode = :worklyCode, worklyPass = :worklyPass, username = :username, password = :password, " +
-                "role = :role, deleted = :deleted, lastname = :lastname, middlename = :middlename, firstname = :firstname, " +
-                "mail = :mail, birthdate = :birthdate, arrivalTime = :arrivalTime, exitTime = :exitTime " +
-                "WHERE id = :id";
+                "workly_code = ?, workly_password = ?, username = ?, password = ?, " +
+                "role = ?, deleted = ?, lastname = ?, middlename = ?, firstname = ?, " +
+                "mail = ?, birthdate = ?, arrival_time = ?, exit_time = ? " +
+                "WHERE id = ?";
 
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("id", employeeId);
-        params.addValue("worklyCode", employee.getWorklyCode() != null ? employee.getWorklyCode() : null);
-        params.addValue("worklyPass", employee.getWorklyPass() != null ? employee.getWorklyPass() : null);
-        params.addValue("username", employee.getUsername() != null ? employee.getUsername() : null);
-        params.addValue("password", employee.getPassword() != null ? employee.getPassword() : null);
-        params.addValue("role", employee.getRole() != null ? employee.getRole().toUpperCase() : null);
-        params.addValue("deleted", employee.getDeleted() != null ? employee.getDeleted() : null);
-        params.addValue("lastname", employee.getLastname() != null ? employee.getLastname() : null);
-        params.addValue("middlename", employee.getMiddlename() != null ? employee.getMiddlename() : null);
-        params.addValue("firstname", employee.getFirstname() != null ? employee.getFirstname() : null);
-        params.addValue("mail", employee.getMail() != null ? employee.getMail() : null);
-        params.addValue("birthdate", employee.getBirthdate() != null ? employee.getBirthdate() : null);
-        params.addValue("arrivalTime", employee.getArrivalTime() != null ? employee.getArrivalTime() : null);
-        params.addValue("exitTime", employee.getExitTime() != null ? employee.getExitTime() : null);
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
 
-        jdbcTemplate.update(sql, params);
+            ps.setObject(1, employee.getWorklyCode(), Types.INTEGER);
+            ps.setObject(2, employee.getWorklyPass(), Types.INTEGER);
+            ps.setObject(3, employee.getUsername(), Types.VARCHAR);
+            ps.setObject(4, employee.getPassword(), Types.VARCHAR);
+            ps.setObject(5, employee.getRole().toUpperCase(), Types.VARCHAR);
+            ps.setObject(6, employee.getDeleted(), Types.BOOLEAN);
+            ps.setObject(7, employee.getLastname(), Types.VARCHAR);
+            ps.setObject(8, employee.getMiddlename(), Types.VARCHAR);
+            ps.setObject(9, employee.getFirstname(), Types.VARCHAR);
+            ps.setObject(10, employee.getMail(), Types.VARCHAR);
+            ps.setObject(11, employee.getBirthdate(), Types.DATE);
+            ps.setObject(12, employee.getArrivalTime(), Types.TIME);
+            ps.setObject(13, employee.getExitTime(), Types.TIME);
+            ps.setObject(14, employeeId, Types.INTEGER);
+
+            ps.executeUpdate();
+        }
 
         return "You Successfully Updated " + username + " Info!";
     }
+
 
     public List<Map<String, Object>> allEmployeesBirthdaysIn5Days() {
 

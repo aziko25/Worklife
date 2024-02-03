@@ -16,6 +16,7 @@ import telegram.bot.Models.Employees;
 import telegram.bot.Service.AdminService;
 import telegram.bot.Service.Employees.EmployeesService;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -88,7 +89,7 @@ public class EmployeesController {
 
     @Authorization(requiredRoles = {"ROLE_ADMIN"})
     @PutMapping("/update/{id}")
-    public ResponseEntity<?> updateEmployee(@PathVariable Integer id, @RequestBody Employees employee) {
+    public ResponseEntity<?> updateEmployee(@PathVariable Integer id, @RequestBody Employees employee) throws SQLException {
 
         return ResponseEntity.ok(employeesService.updateWholeEmployeesData(id, employee));
     }
