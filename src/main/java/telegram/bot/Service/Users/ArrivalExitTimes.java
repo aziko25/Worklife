@@ -179,7 +179,7 @@ public class ArrivalExitTimes {
 
             long overtime = Duration.between(userExpectedExitTime, now.toLocalTime()).toMinutes();
 
-            String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND date = current_date";
+            String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND arrived_time IS NOT NULL AND date = current_date";
 
             jdbcTemplate.update(sql, currentTimestamp, imagePath, overtime, exitRadius, username);
         }
@@ -192,7 +192,7 @@ public class ArrivalExitTimes {
                 assert userExitTime != null;
                 long overtime = Duration.between(userExitTime, now.toLocalTime()).toMinutes();
 
-                String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND date = current_date";
+                String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND date = current_date AND arrived_time IS NOT NULL;";
 
                 jdbcTemplate.update(sql, currentTimestamp, imagePath, overtime, exitRadius, username);
             }
@@ -203,7 +203,7 @@ public class ArrivalExitTimes {
                 assert exitTime != null;
                 long overtime = Duration.between(exitTime, now.toLocalTime()).toMinutes();
 
-                String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND date = current_date";
+                String sql = "UPDATE " + schema_name + ".working_time SET exited_time = ?, exit_img_link = ?, overtime = ?, exit_radius = ? WHERE employee_name = ? AND date = current_date AND arrived_time IS NOT NULL;";
 
                 jdbcTemplate.update(sql, currentTimestamp, imagePath, overtime, exitRadius, username);
             }
