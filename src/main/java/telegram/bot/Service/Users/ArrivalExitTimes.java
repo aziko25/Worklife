@@ -187,7 +187,7 @@ public class ArrivalExitTimes {
 
             try {
 
-                LocalTime userExitTime = jdbcTemplate.queryForObject("SELECT exit_time FROM " + schema_name + ".employee WHERE username = ?;", LocalTime.class, username);
+                LocalTime userExitTime = jdbcTemplate.queryForObject("SELECT exit_time FROM " + schema_name + ".employees WHERE username = ?;", LocalTime.class, username);
 
                 assert userExitTime != null;
                 long overtime = Duration.between(userExitTime, now.toLocalTime()).toMinutes();
