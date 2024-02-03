@@ -44,7 +44,7 @@ public class EmployeesService {
         }
 
         String sql = "UPDATE " + SCHEME_NAME + ".employees SET " +
-                "workly_code = ?, workly_password = ?, username = ?, password = ?, " +
+                "workly_code = ?, workly_password = ?, password = ?, " +
                 "role = ?, deleted = ?, lastname = ?, middlename = ?, firstname = ?, " +
                 "mail = ?, birthdate = ?, arrival_time = ?, exit_time = ? " +
                 "WHERE id = ?";
@@ -54,18 +54,17 @@ public class EmployeesService {
 
             ps.setObject(1, employee.getWorklyCode(), Types.INTEGER);
             ps.setObject(2, employee.getWorklyPass(), Types.INTEGER);
-            ps.setObject(3, employee.getUsername(), Types.VARCHAR);
-            ps.setObject(4, employee.getPassword(), Types.VARCHAR);
-            ps.setObject(5, employee.getRole().toUpperCase(), Types.VARCHAR);
-            ps.setObject(6, employee.getDeleted(), Types.BOOLEAN);
-            ps.setObject(7, employee.getLastname(), Types.VARCHAR);
-            ps.setObject(8, employee.getMiddlename(), Types.VARCHAR);
-            ps.setObject(9, employee.getFirstname(), Types.VARCHAR);
-            ps.setObject(10, employee.getMail(), Types.VARCHAR);
-            ps.setObject(11, employee.getBirthdate(), Types.DATE);
-            ps.setObject(12, employee.getArrivalTime(), Types.TIME);
-            ps.setObject(13, employee.getExitTime(), Types.TIME);
-            ps.setObject(14, employeeId, Types.INTEGER);
+            ps.setObject(3, employee.getPassword(), Types.VARCHAR);
+            ps.setObject(4, employee.getRole().toUpperCase(), Types.VARCHAR);
+            ps.setObject(5, employee.getDeleted(), Types.BOOLEAN);
+            ps.setObject(6, employee.getLastname(), Types.VARCHAR);
+            ps.setObject(7, employee.getMiddlename(), Types.VARCHAR);
+            ps.setObject(8, employee.getFirstname(), Types.VARCHAR);
+            ps.setObject(9, employee.getMail(), Types.VARCHAR);
+            ps.setObject(10, employee.getBirthdate(), Types.DATE);
+            ps.setObject(11, employee.getArrivalTime(), Types.TIME);
+            ps.setObject(12, employee.getExitTime(), Types.TIME);
+            ps.setObject(13, employeeId, Types.INTEGER);
 
             ps.executeUpdate();
         }
