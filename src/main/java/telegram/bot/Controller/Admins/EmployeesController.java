@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import telegram.bot.Configuration.JWTAuthorization.Authorization;
+import telegram.bot.Models.Employees;
 import telegram.bot.Service.AdminService;
 import telegram.bot.Service.Employees.EmployeesService;
 
@@ -83,6 +84,13 @@ public class EmployeesController {
 
             return new ResponseEntity<>("Username already exists", HttpStatus.BAD_REQUEST);
         }
+    }
+
+    @Authorization(requiredRoles = {"ROLE_ADMIN"})
+    @PutMapping("/update/{id}")
+    public ResponseEntity<?> updateEmployee(@PathVariable Integer id, @RequestBody Employees employee) {
+
+        return ResponseEntity.ok(employeesService.updateWholeEmployeesData(id, employee));
     }
 
     @Authorization(requiredRoles = {"ROLE_ADMIN"})

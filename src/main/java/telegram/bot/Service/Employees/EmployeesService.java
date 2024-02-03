@@ -6,8 +6,10 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.ColumnMapRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import telegram.bot.Models.Employees;
 
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -28,6 +30,44 @@ import static telegram.bot.Controller.Admins.Login.USERNAME;
 public class EmployeesService {
 
     private final JdbcTemplate jdbcTemplate;
+
+    public String updateWholeEmployeesData(Integer employeeId, Employees employee) {
+
+        String username = jdbcTemplate.queryForObject("SELECT username FROM " + SCHEME_NAME + ".employees WHERE id = ?;",
+                String.class, employeeId);
+
+        if (employee.getRole() == null || (!employee.getRole().equalsIgnoreCase("ROLE_USER") &&
+                        !employee.getRole().equalsIgnoreCase("ROLE_ADMIN"))) {
+
+            throw new IllegalArgumentException("Role Should Be ROLE_ADMIN or ROLE_USER!");
+        }
+
+        String sql = "UPDATE " + SCHEME_NAME + ".employees SET " +
+                "worklyCode = :worklyCode, worklyPass = :worklyPass, username = :username, password = :password, " +
+                "role = :role, deleted = :deleted, lastname = :lastname, middlename = :middlename, firstname = :firstname, " +
+                "mail = :mail, birthdate = :birthdate, arrivalTime = :arrivalTime, exitTime = :exitTime " +
+                "WHERE id = :id";
+
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", employeeId);
+        params.addValue("worklyCode", employee.getWorklyCode() != null ? employee.getWorklyCode() : null);
+        params.addValue("worklyPass", employee.getWorklyPass() != null ? employee.getWorklyPass() : null);
+        params.addValue("username", employee.getUsername() != null ? employee.getUsername() : null);
+        params.addValue("password", employee.getPassword() != null ? employee.getPassword() : null);
+        params.addValue("role", employee.getRole() != null ? employee.getRole().toUpperCase() : null);
+        params.addValue("deleted", employee.getDeleted() != null ? employee.getDeleted() : null);
+        params.addValue("lastname", employee.getLastname() != null ? employee.getLastname() : null);
+        params.addValue("middlename", employee.getMiddlename() != null ? employee.getMiddlename() : null);
+        params.addValue("firstname", employee.getFirstname() != null ? employee.getFirstname() : null);
+        params.addValue("mail", employee.getMail() != null ? employee.getMail() : null);
+        params.addValue("birthdate", employee.getBirthdate() != null ? employee.getBirthdate() : null);
+        params.addValue("arrivalTime", employee.getArrivalTime() != null ? employee.getArrivalTime() : null);
+        params.addValue("exitTime", employee.getExitTime() != null ? employee.getExitTime() : null);
+
+        jdbcTemplate.update(sql, params);
+
+        return "You Successfully Updated " + username + " Info!";
+    }
 
     public List<Map<String, Object>> allEmployeesBirthdaysIn5Days() {
 
@@ -100,6 +140,12 @@ public class EmployeesService {
             throw new IllegalArgumentException("Reason Is Not Found!");
         }
 
+        String comments = null;
+        if (timeOff.getComments() != null) {
+
+            comments = timeOff.getComments();
+        }
+
         if (timeOff.getStartDate() == null || timeOff.getEndDate() == null) {
             throw new IllegalArgumentException("Start Date And End Date Should Be Present!");
         }
@@ -112,8 +158,8 @@ public class EmployeesService {
 
             if (timeOff.getDayOffs() != null && timeOff.getDayOffs() && timeOff.getTimeOffs() != null && !timeOff.getTimeOffs()) {
 
-                String insertSql = "INSERT INTO " + SCHEME_NAME + ".working_time(date, employee_name, time_off, time_off_reason_id) VALUES (?, ?, ?, ?);";
-                jdbcTemplate.update(insertSql, currentDate, employeeUsername, true, reason.get("id"));
+                String insertSql = "INSERT INTO " + SCHEME_NAME + ".working_time(date, employee_name, time_off, time_off_reason_id, time_off_comments) VALUES (?, ?, ?, ?, ?);";
+                jdbcTemplate.update(insertSql, currentDate, employeeUsername, true, reason.get("id"), comments);
 
                 done = true;
             }
@@ -126,9 +172,9 @@ public class EmployeesService {
                 }
 
                 String insertSql = "INSERT INTO " + SCHEME_NAME + ".working_time(date, employee_name, time_off, " +
-                        "time_off_reason_id, expected_arrival_time, expected_exit_time) VALUES (?, ?, ?, ?, ?, ?)";
+                        "time_off_reason_id, expected_arrival_time, expected_exit_time, time_off_comments) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 jdbcTemplate.update(insertSql, currentDate, employeeUsername, true, reason.get("id"),
-                        timeOff.getDayArrivalTime(), timeOff.getDayExitTime());
+                        timeOff.getDayArrivalTime(), timeOff.getDayExitTime(), comments);
 
                 done = true;
             }
@@ -231,5 +277,7 @@ public class EmployeesService {
 
         @JsonFormat(pattern = "HH:mm")
         private LocalTime dayExitTime;
+
+        private String comments;
     }
 }

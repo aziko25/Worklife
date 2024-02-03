@@ -1,50 +1,37 @@
 package telegram.bot.Models;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Date;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Employees {
 
     private int id;
+    private Integer worklyCode;
+    private Integer worklyPass;
     private String username;
     private String password;
     private String role;
-    private long chat_id;
+    private Long chat_id;
+    private Boolean deleted;
+    private String lastname;
+    private String middlename;
+    private String firstname;
+    private String mail;
 
-    public int getId() {
-        return id;
-    }
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate birthdate;
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-    public long getChat_id() {
-        return chat_id;
-    }
-
-    public void setChat_id(long chat_id) {
-        this.chat_id = chat_id;
-    }
+    private LocalTime arrivalTime;
+    private LocalTime exitTime;
 }
