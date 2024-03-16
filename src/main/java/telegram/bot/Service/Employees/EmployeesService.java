@@ -46,7 +46,7 @@ public class EmployeesService {
         String sql = "UPDATE " + SCHEME_NAME + ".employees SET " +
                 "workly_code = ?, workly_password = ?, password = ?, " +
                 "role = ?, deleted = ?, lastname = ?, middlename = ?, firstname = ?, " +
-                "mail = ?, birthdate = ?, arrival_time = ?, exit_time = ? " +
+                "mail = ?, birthdate = ?, arrival_time = ?, exit_time = ?, department_name = ? " +
                 "WHERE id = ?";
 
         try (Connection connection = dataSource.getConnection();
@@ -64,7 +64,8 @@ public class EmployeesService {
             ps.setObject(10, employee.getBirthdate(), Types.DATE);
             ps.setObject(11, employee.getArrivalTime(), Types.TIME);
             ps.setObject(12, employee.getExitTime(), Types.TIME);
-            ps.setObject(13, employeeId, Types.INTEGER);
+            ps.setObject(13, employee.getDepartmentName(), Types.VARCHAR);
+            ps.setObject(14, employeeId, Types.INTEGER);
 
             ps.executeUpdate();
         }

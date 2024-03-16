@@ -1,7 +1,6 @@
 package telegram.bot.Service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SingleColumnRowMapper;
@@ -12,9 +11,6 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -26,6 +22,7 @@ import java.util.*;
 import static telegram.bot.Controller.Admins.Login.SCHEME_NAME;
 import static telegram.bot.Controller.Admins.Login.USERNAME;
 import static telegram.bot.Service.Users.TasksService.formatDates;
+import static telegram.bot.Service.Users.WorkingTimeService.formattingDates;
 
 @Service
 @RequiredArgsConstructor
@@ -52,23 +49,22 @@ public class AdminService {
     }
 
     public void createEmployee(String schema_name, String username, String password, String role, int worklyCode, int worklyPass,
-                               LocalTime arrivalTime, LocalTime exitTime) {
+                               LocalTime arrivalTime, LocalTime exitTime, String departmentName) {
 
         String checkSql = "SELECT COUNT(*) FROM " + schema_name + ".employees WHERE username = ? AND workly_code = ?;";
 
         Integer count = jdbcTemplate.query(checkSql, new Object[]{username, worklyCode}, rs -> rs.next() ? rs.getInt(1) : 0);
 
         if (count != null && count > 0) {
+            throw new IllegalArgumentException("Username or Workly Code already exists");
+        } else {
+            // Including department_name in the insert statement, handling null as well
+            String insertSql = "INSERT INTO " + schema_name + ".employees (username, password, role, workly_code, workly_password, arrival_time, exit_time, department_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-            throw new IllegalArgumentException("Username Or Workly Code already exists");
-        }
-        else {
-
-            String insertSql = "INSERT INTO " + schema_name + ".employees (username, password, role, workly_code, workly_password, arrival_time, exit_time) VALUES (?, ?, ?, ?, ?, ?, ?)";
-
-            jdbcTemplate.update(insertSql, username, password, role, worklyCode, worklyPass, arrivalTime, exitTime);
+            jdbcTemplate.update(insertSql, username, password, role, worklyCode, worklyPass, arrivalTime, exitTime, departmentName);
         }
     }
+
 
     public void deleteEmployee(String schema_name, String username) {
 
@@ -412,6 +408,47 @@ public class AdminService {
         String sql = "SELECT * FROM " + schema_name + ".working_time WHERE date_trunc('day', date) >= ? AND date_trunc('day', date) <= ? ORDER BY id";
 
         return selectByUsernameAndDateRange(sql, startDate, endDate);
+    }
+
+    public List<Map<String, Object>> seeWorkingTimeOfAllEmployeesBetweenDatesUpdatedForExcel(String schema_name, LocalDate startDate,
+                                                                                             LocalDate endDate, String departmentName) {
+
+        // Build the base SQL query
+        String sql = "SELECT e.username, e.arrival_time, e.exit_time, w.* " +
+                "FROM " + schema_name + ".employees e " +
+                "JOIN " + schema_name + ".working_time w ON e.username = w.employee_name ";
+
+        // If a department name is provided, join with the departments table and add the condition
+        if (departmentName != null) {
+
+            sql += "JOIN " + schema_name + ".departments d ON e.department_name = d.name " +
+                    "WHERE date_trunc('day', w.date) >= ? AND date_trunc('day', w.date) <= ? " +
+                    "AND d.name = ?";
+        }
+        else {
+
+            sql += "WHERE date_trunc('day', w.date) >= ? AND date_trunc('day', w.date) <= ?";
+        }
+
+        sql += " ORDER BY e.username, w.date;";
+
+        List<Object> parameters = new ArrayList<>();
+        parameters.add(startDate);
+        parameters.add(endDate);
+
+        if (departmentName != null) {
+            parameters.add(departmentName);
+        }
+
+        Object[] paramsArray = parameters.toArray();
+
+        System.out.println(sql + "\n" + Arrays.toString(paramsArray));
+
+        System.out.println(jdbcTemplate.queryForList(sql, paramsArray));
+
+        System.out.println(formattingDates(jdbcTemplate.queryForList(sql, paramsArray)));
+
+        return formattingDates(jdbcTemplate.queryForList(sql, paramsArray));
     }
 
     public String startCheckTask(String schema_name, int task_id) throws Exception {

@@ -67,13 +67,14 @@ public class EmployeesController {
                                             @RequestParam int worklyCode,
                                             @RequestParam int worklyPass,
                                             @RequestParam LocalTime arrivalTime,
-                                            @RequestParam LocalTime exitTime) {
+                                            @RequestParam LocalTime exitTime,
+                                            @RequestParam(required = false) String departmentName) {
 
         try {
 
             if (username.contains(SCHEME_NAME + "_")) {
 
-                adminService.createEmployee(SCHEME_NAME, username, password, role, worklyCode, worklyPass, arrivalTime, exitTime);
+                adminService.createEmployee(SCHEME_NAME, username, password, role, worklyCode, worklyPass, arrivalTime, exitTime, departmentName);
 
                 return ResponseEntity.ok("Employee " + username + " Created");
             }

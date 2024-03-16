@@ -34,4 +34,5 @@ public class Employees {
 
     private LocalTime arrivalTime;
     private LocalTime exitTime;
+    private String departmentName;
 }

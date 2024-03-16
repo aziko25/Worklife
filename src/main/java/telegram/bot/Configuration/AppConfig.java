@@ -17,7 +17,7 @@ public class AppConfig {
 
         dataSource.setDriverClassName("org.postgresql.Driver");
 
-        dataSource.setUrl("jdbc:postgresql://localhost:5432/worklife");
+        dataSource.setUrl("jdbc:postgresql://161.35.75.184:5432/worklife");
         dataSource.setUsername("postgres");
         dataSource.setPassword("bestuser");
 

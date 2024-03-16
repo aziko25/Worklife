@@ -31,6 +31,11 @@ public class CompaniesService {
 
             String sql = "CREATE SCHEMA " + schema_name + ";" +
                     "SET SEARCH_PATH TO " + schema_name + ";" +
+
+                    "CREATE TABLE " + schema_name + ".departments (" +
+                    "id SERIAL PRIMARY KEY, " +
+                    "name varchar unique);" +
+
                     "CREATE TABLE " + schema_name + ".employees (" +
                     "id SERIAL PRIMARY KEY, " +
                     "workly_code int unique, " +
@@ -47,7 +52,8 @@ public class CompaniesService {
                     "birthdate date, " +
                     "image_link varchar," +
                     "arrival_time TIME, " +
-                    "exit_time TIME);" +
+                    "exit_time TIME," +
+                    "department_name varchar references " + schema_name + ".departments(name) ON UPDATE CASCADE ON DELETE SET NULL;);" +
 
                     "CREATE TABLE " + schema_name + ".audio (" +
                     "id SERIAL PRIMARY KEY," +
@@ -80,7 +86,11 @@ public class CompaniesService {
                     "id SERIAL PRIMARY KEY," +
                     "arrival_time time," +
                     "exit_time time, " +
-                    "company_name varchar)" +
+                    "company_name varchar);" +
+
+                    "CREATE TABLE " + schema_name + ".time_off_reasons (" +
+                    "id SERIAL PRIMARY KEY, " +
+                    "name VARCHAR UNIQUE);" +
 
                     "CREATE TABLE " + schema_name + ".working_time (" +
                     "id SERIAL PRIMARY KEY," +
@@ -93,6 +103,11 @@ public class CompaniesService {
                     "overtime int," +
                     "arrival_radius int," +
                     "exit_radius int," +
+                    "time_off boolean, " +
+                    "time_off_reason_id int references " + schema_name + ".time_off_reasons," +
+                    "expected_arrival_time timestamp," +
+                    "expected_exit_time timestamp," +
+                    "time_off_comments varchar," +
                     "employee_name varchar references " + schema_name + ".employees(username) ON UPDATE CASCADE ON DELETE CASCADE);" +
 
                     "CREATE TABLE " + schema_name + ".workly_controller (" +
